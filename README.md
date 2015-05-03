@@ -1,6 +1,6 @@
 Overview
 --------
-A simple Java client to mimic GDrive after the client stop working due to Google deprecated its using API.
+A simple Java client to mimic <code>grive</code> after the client stop working due to Google deprecated its using API.
 
 Configure Google Drive API Credential
 ----------------------------------------
