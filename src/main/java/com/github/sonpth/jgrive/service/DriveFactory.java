@@ -1,12 +1,13 @@
 package com.github.sonpth.jgrive.service;
 
+import static com.github.sonpth.jgrive.service.FileUtils.APP_PROPERTIES;
+import static com.github.sonpth.jgrive.service.FileUtils.APP_STATES;
+
 import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.Properties;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
@@ -21,8 +22,6 @@ import com.google.api.services.drive.DriveScopes;
 
 public class DriveFactory {
 	private static final String REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob";
-	private static final String APP_PROPERTIES = "application.properties";
-	private static final String APP_STATES=".states";
 	
 	private volatile Drive instance;
 	
@@ -36,7 +35,7 @@ public class DriveFactory {
 		HttpTransport httpTransport = new NetHttpTransport();
 		JsonFactory jsonFactory = new JacksonFactory();
 				
-		Properties appProperties = getProperties(APP_PROPERTIES);
+		Properties appProperties = FileUtils.getProperties(APP_PROPERTIES);
 		GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
 				httpTransport, jsonFactory, appProperties.getProperty("clientid"), appProperties.getProperty("clientsec"), Arrays.asList(DriveScopes.DRIVE))
 					.setAccessType("offline")
@@ -64,9 +63,8 @@ public class DriveFactory {
 		Properties appStates = new Properties();
 		appStates.put("accessToken", accessToken);
 		appStates.put("refreshToken", refreshToken);
-        FileOutputStream outstream = new FileOutputStream(APP_STATES);
-        appStates.store(outstream, null);
-        outstream.close();
+		FileUtils.saveStates(appStates);
+     
 		return new Drive.Builder(httpTransport, jsonFactory, credential).build();
 	}
 	
@@ -74,8 +72,8 @@ public class DriveFactory {
 		HttpTransport httpTransport = new NetHttpTransport();
 		JsonFactory jsonFactory = new JacksonFactory();
 		
-		Properties appProperties = getProperties(APP_PROPERTIES);
-		Properties appStates = getProperties(APP_STATES);
+		Properties appProperties = FileUtils.getProperties(APP_PROPERTIES);
+		Properties appStates = FileUtils.getProperties(APP_STATES);
 		
 		GoogleCredential credential = new GoogleCredential.Builder().setJsonFactory(jsonFactory)
 				.setTransport(httpTransport).setClientSecrets(appProperties.getProperty("clientid"), appProperties.getProperty("clientsec")).build();
@@ -85,14 +83,7 @@ public class DriveFactory {
 		return new Drive.Builder(httpTransport, jsonFactory, credential).build();
 	}
 	
-	private Properties getProperties(String filename) throws IOException{
-		Properties appProperties = new Properties();
-		FileInputStream instream = new FileInputStream(filename);
-		appProperties.load(instream);
-		instream.close();
-		
-		return appProperties;
-	}
+
 	
 	private Drive getGoolgeDriveInstance() throws IOException{
 		if (requestNewAuthToken){

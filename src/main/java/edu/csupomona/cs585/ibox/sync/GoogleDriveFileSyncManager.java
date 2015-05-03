@@ -10,6 +10,7 @@ import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 
 
+@Deprecated
 public class GoogleDriveFileSyncManager implements FileSyncManager {
 
 	//Google Drive service
