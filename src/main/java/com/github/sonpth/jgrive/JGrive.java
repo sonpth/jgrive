@@ -25,7 +25,7 @@ public class JGrive {
 	//FIXME current working directory OR application.properties.
 	private static final String SYN_FOLDER = "/home/pson/cloud";
 	
-	private static final boolean dryRun = true;
+	private static final boolean dryRun = false;
 	
     private static void usage() {
     	System.out.println("JGrive options:");
@@ -48,14 +48,11 @@ public class JGrive {
      * { "last_sync": { "sec": 1429255944, "nsec": 743437000 }, "change_stamp": 10105 }
      * @param lastSync
      */
-    private static Map<String, java.io.File> readLocal(long lastSync){
-    	System.out.println("Reading local directories");
-    	java.io.File synFolder = new java.io.File(SYN_FOLDER);
-    	
-    	Map<String, java.io.File> candidates = new HashMap<>();
-    	
+    private static Map<String, java.io.File> readLocal(Map<String, java.io.File> candidates, java.io.File synFolder, long lastSync){
     	for(java.io.File file: synFolder.listFiles()){
-    		if (file.isFile() && file.lastModified() > lastSync){
+    		if (!file.isFile()){
+    			readLocal(candidates, file, lastSync);
+    		} else if (file.lastModified() > lastSync){
     			System.out.println("\t[" + file.getName() + "]");
     			candidates.put(file.getName(), file);
     		}
@@ -65,7 +62,6 @@ public class JGrive {
     }
     
     private static void syncFiles(Map<String, java.io.File> candidates) throws Exception {
-		System.out.println("Synchronizing folders" + (dryRun? " [dry-run]" : ""));
 		Drive service = new DriveFactory(false).getInstance();
 
 		Drive.Files driveFiles = service.files();
@@ -77,7 +73,7 @@ public class JGrive {
 			//TODO ? java.io.File#length() can be slow. 
 			if (candidates.containsKey(filename)
 					//TODO check filesize b4 md5 will quicker ?
-					&& !FileUtils.getMd5Checksum(SYN_FOLDER+ "/" + filename).equals(file.getMd5Checksum())) {
+					&& !FileUtils.getMd5Checksum(candidates.get(filename)).equals(file.getMd5Checksum())) {
 				if (dryRun){
 					System.out.println("\tChanged: [" + filename + "]");
 				} else {
@@ -95,7 +91,13 @@ public class JGrive {
 	public static void main(String[] args) throws Exception{
 		Properties appStates = FileUtils.getProperties(APP_STATES);
 		long lastSync = Long.valueOf(appStates.getProperty(APP_LAST_SYNC, "0"));
-		syncFiles(readLocal(lastSync));
+
+		System.out.println("Reading local directories");
+		Map<String, java.io.File> candidates = new HashMap<>();
+		readLocal(candidates, new java.io.File(SYN_FOLDER), lastSync);
+		
+		System.out.println("Synchronizing folders" + (dryRun? " [dry-run]" : ""));
+		syncFiles(candidates);
 		
 		appStates.setProperty(APP_LAST_SYNC, Long.toString(System.currentTimeMillis()));
 		FileUtils.saveStates(appStates);

@@ -1,5 +1,6 @@
 package com.github.sonpth.jgrive.service;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -36,9 +37,9 @@ public class FileUtils {
 	 * @throws NoSuchAlgorithmException 
 	 * @throws IOException 
 	 */
-	public static String getMd5Checksum(String filename) throws NoSuchAlgorithmException, IOException{
+	public static String getMd5Checksum(File file) throws NoSuchAlgorithmException, IOException{
 	    MessageDigest md = MessageDigest.getInstance("MD5");
-	    FileInputStream fis = new FileInputStream(filename);
+	    FileInputStream fis = new FileInputStream(file);
 	    byte[] dataBytes = new byte[1024];
 	 
 	    int nread = 0; 
