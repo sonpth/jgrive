@@ -1,11 +1,16 @@
 package com.github.sonpth.jgrive;
 
 import static com.github.sonpth.jgrive.service.FileUtils.APP_LAST_SYNC;
-import static com.github.sonpth.jgrive.service.FileUtils.APP_STATES;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import com.github.sonpth.jgrive.service.DriveFactory;
 import com.github.sonpth.jgrive.service.FileUtils;
@@ -24,8 +29,8 @@ import com.google.api.services.drive.model.FileList;
 public class JGrive {
 	//FIXME current working directory OR application.properties.
 	private static final String SYN_FOLDER = "/home/pson/cloud";
-	
-	private static final boolean dryRun = false;
+	private static final boolean DRY_RUN = false;
+	private static final Log logger = LogFactory.getLog(JGrive.class);
 	
     private static void usage() {
     	System.out.println("JGrive options:");
@@ -53,7 +58,7 @@ public class JGrive {
     		if (!file.isFile()){
     			readLocal(candidates, file, lastSync);
     		} else if (file.lastModified() > lastSync){
-    			System.out.println("\t[" + file.getName() + "]");
+    			System.out.println("\tModified since last sync: [" + file.getName() + "]");
     			candidates.put(file.getName(), file);
     		}
     	}
@@ -61,46 +66,91 @@ public class JGrive {
     	return candidates;
     }
     
-    private static void syncFiles(Map<String, java.io.File> candidates) throws Exception {
-		Drive service = new DriveFactory(false).getInstance();
+    /**
+     * [https://developers.google.com/drive/v2/reference/files/list]
+     * Retrieve a list of File resources.
+     *
+     * @param service Drive API service instance.
+     * @return List of File resources.
+     */
+    private static List<File> retrieveAllFiles(Drive.Files driveFiles) throws IOException {
+    	logger.debug("Retrieving remote file's meta ...");
+    	List<File> result = new ArrayList<File>(1000);
+    	Files.List request = driveFiles.list();
+    	request.setQ("");
 
+    	do {
+    		try {
+    			FileList files = request.execute();
+
+    			result.addAll(files.getItems());
+    			request.setPageToken(files.getNextPageToken());
+    		} catch (IOException e) {
+    			System.out.println("An error occurred: " + e);
+    			request.setPageToken(null);
+    		}
+    	} while (request.getPageToken() != null &&
+    			request.getPageToken().length() > 0);
+
+    	return result;
+    }
+
+    private static void syncFiles(Map<String, java.io.File> candidates) throws Exception {
+    	//TODO do nothing when no local candidates, should it ?
+    	if (candidates.size() == 0){
+    		return;
+    	}
+    	
+    	Drive service = new DriveFactory(false).getInstance();
 		Drive.Files driveFiles = service.files();
-		Files.List request = driveFiles.list();
-		FileList files = request.execute();
-		for(File file : files.getItems()) {
+		List<File> remoteFiles = retrieveAllFiles(driveFiles);
+		for(File file : remoteFiles) {
 			//System.out.println(String.format("Title: [%s], [%s] [%d]", file.getTitle(), file.getId(), file.getFileSize()));
 			String filename = file.getTitle();
-			//TODO ? java.io.File#length() can be slow. 
-			if (candidates.containsKey(filename)
-					//TODO check filesize b4 md5 will quicker ?
-					&& !FileUtils.getMd5Checksum(candidates.get(filename)).equals(file.getMd5Checksum())) {
-				if (dryRun){
-					System.out.println("\tChanged: [" + filename + "]");
-				} else {
-					//@See GoogleDriveFileSyncManager.updateFile
-					System.out.println("\tUdpating: [" + filename + "]...");
-					File body = new File();
-					body.setTitle(filename);
-					FileContent mediaContent = new FileContent("*/*", candidates.get(filename));
-					driveFiles.update(file.getId(), body, mediaContent).execute();
+			if (candidates.containsKey(filename)) {
+				//If file was modified.
+				//TODO ? java.io.File#length() can be slow. 
+				//TODO check filesize b4 md5 will quicker ?
+				if(!FileUtils.getMd5Checksum(candidates.get(filename)).equals(file.getMd5Checksum())) {
+					if (DRY_RUN){
+						System.out.println("\tChanged: [" + filename + "]");
+					} else {
+						//@See GoogleDriveFileSyncManager.updateFile
+						System.out.println("\tUpdating: [" + filename + "]...");
+						File body = new File();
+						body.setTitle(filename);
+						FileContent mediaContent = new FileContent("*/*", candidates.get(filename));
+						driveFiles.update(file.getId(), body, mediaContent).execute();
+					}
 				}
+				
+				candidates.remove(filename);
+			} else {
+				//TODO check if it is directory 
+				//TODO check if it is deleted/trash
+				System.out.println("\tExisting in remote but not local: [" + filename + "]");
 			}
+		}
+		
+		for(String filename: candidates.keySet()){
+			//TODO The whole list or only part of of the remote list ?
+			System.out.println("\tTODO upload to remote: [" + filename + "]");
 		}
     }
     
 	public static void main(String[] args) throws Exception{
-		Properties appStates = FileUtils.getProperties(APP_STATES);
+		Properties appStates = FileUtils.getAppStates();
 		long lastSync = Long.valueOf(appStates.getProperty(APP_LAST_SYNC, "0"));
 
-		System.out.println("Reading local directories");
+		logger.info("Reading local directories ...");
 		Map<String, java.io.File> candidates = new HashMap<>();
 		readLocal(candidates, new java.io.File(SYN_FOLDER), lastSync);
 		
-		System.out.println("Synchronizing folders" + (dryRun? " [dry-run]" : ""));
+		logger.info("Synchronizing folders" + (DRY_RUN? " [dry-run]" : " ..."));
 		syncFiles(candidates);
 		
 		appStates.setProperty(APP_LAST_SYNC, Long.toString(System.currentTimeMillis()));
-		FileUtils.saveStates(appStates);
-		System.out.println("Done!");
+		FileUtils.saveAppStates();
+		logger.info("Done!");
 	}
 }

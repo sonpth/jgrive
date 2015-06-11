@@ -2,18 +2,25 @@ package com.github.sonpth.jgrive.service;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Properties;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 public class FileUtils {
-	public static final String APP_PROPERTIES = "application.properties";
-	
-	public static final String APP_STATES=".states";
+	public static final String APP_PROPERTY_FILE = "application.properties";
+	public static final String APP_STATES_FILE=".states";
 	public static final String APP_LAST_SYNC = "lastsync";
 
+	private static Properties APP_STATES;
+
+	private static final Log logger = LogFactory.getLog(FileUtils.class);
+	
 	public static Properties getProperties(String filename) throws IOException{
 		Properties properties = new Properties();
 		FileInputStream instream = new FileInputStream(filename);
@@ -23,12 +30,27 @@ public class FileUtils {
 		return properties;
 	}
 	
-	/**
-	 * TODO should not pass appStates around ?
-	 */
-	public static void saveStates(Properties appStates) throws IOException {
-		FileOutputStream outstream = new FileOutputStream(APP_STATES);
-		appStates.store(outstream, null);
+	public static synchronized Properties getAppStates() throws IOException{
+		if (APP_STATES != null){
+			return APP_STATES;
+		}
+		
+		APP_STATES = new Properties();
+		FileInputStream instream;
+		try {
+			instream = new FileInputStream(APP_STATES_FILE);
+			APP_STATES.load(instream);
+			instream.close();
+		} catch (FileNotFoundException ex) {
+			logger.debug(ex.getMessage());
+		}
+		
+		return APP_STATES;
+	}
+	
+	public static synchronized void saveAppStates() throws IOException {
+		FileOutputStream outstream = new FileOutputStream(APP_STATES_FILE);
+		APP_STATES.store(outstream, null);
 		outstream.close();
 	}
 	
