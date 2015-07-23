@@ -27,10 +27,10 @@ import com.google.api.services.drive.model.FileList;
  * - delete
  */
 public class JGrive {
-	//FIXME current working directory OR application.properties.
-	private static final String SYN_FOLDER = "/home/pson/cloud";
 	private static final boolean DRY_RUN = false;
 	private static final Log logger = LogFactory.getLog(JGrive.class);
+	
+	private static Properties APP_PROPERTIES;
 	
     private static void usage() {
     	System.out.println("JGrive options:");
@@ -48,6 +48,21 @@ public class JGrive {
         System.exit(0);
     }
     
+    
+    private static boolean isLocallyIgnore(String filename){
+    	if (localIgnorePatterns.length == 0){
+    		return false;
+    	}
+    	
+    	for (String pattern : localIgnorePatterns){
+    		if (filename.matches(pattern)){
+    			return true;
+    		}
+    	}
+    	
+    	return false;
+    }
+    
     /**
      * .grive_state
      * { "last_sync": { "sec": 1429255944, "nsec": 743437000 }, "change_stamp": 10105 }
@@ -57,7 +72,8 @@ public class JGrive {
     	for(java.io.File file: synFolder.listFiles()){
     		if (!file.isFile()){
     			readLocal(candidates, file, lastSync);
-    		} else if (file.lastModified() > lastSync){
+    		} else if (file.lastModified() > lastSync
+    				&& !isLocallyIgnore(file.getName())){
     			System.out.println("\tModified since last sync: [" + file.getName() + "]");
     			candidates.put(file.getName(), file);
     		}
@@ -138,13 +154,18 @@ public class JGrive {
 		}
     }
     
+    private static String[] localIgnorePatterns;
+    
 	public static void main(String[] args) throws Exception{
 		Properties appStates = FileUtils.getAppStates();
 		long lastSync = Long.valueOf(appStates.getProperty(APP_LAST_SYNC, "0"));
 
+		Properties appProperties = FileUtils.getProperties(FileUtils.APP_PROPERTY_FILE);
+		final String syncFoler = appProperties.getProperty("syncFolder");
+		localIgnorePatterns = appProperties.getProperty("localIgnorePattern", "").split("|");
 		logger.info("Reading local directories ...");
 		Map<String, java.io.File> candidates = new HashMap<>();
-		readLocal(candidates, new java.io.File(SYN_FOLDER), lastSync);
+		readLocal(candidates, new java.io.File(syncFoler), lastSync);
 		
 		logger.info("Synchronizing folders" + (DRY_RUN? " [dry-run]" : " ..."));
 		syncFiles(candidates);

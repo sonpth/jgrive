@@ -1,3 +1,6 @@
 # [Enable the Drive API | https://developers.google.com/drive/web/quickstart/quickstart-java#step_1_enable_the_drive_api]
 clientid=YOUR_CLIENT_ID
 clientsec=YOUR_CLIENT_SECRET
+#
+syncFolder=ROOT_FOLDER_TO_BE_SYNC
+localIgnorePattern=workspace
