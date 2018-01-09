@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 
 import org.apache.commons.logging.Log;
@@ -28,9 +29,9 @@ import com.google.api.services.drive.model.FileList;
  */
 public class JGrive {
 	private static final boolean DRY_RUN = false;
-	private static final Log logger = LogFactory.getLog(JGrive.class);
+	private static final Log LOGGER = LogFactory.getLog(JGrive.class);
 	
-	private static Properties APP_PROPERTIES;
+//	private static Properties APP_PROPERTIES;
 	
     private static void usage() {
     	System.out.println("JGrive options:");
@@ -48,7 +49,6 @@ public class JGrive {
         System.exit(0);
     }
     
-    
     private static boolean isLocallyIgnore(String filename){
     	if (localIgnorePatterns.length == 0){
     		return false;
@@ -64,11 +64,16 @@ public class JGrive {
     }
     
     /**
+     * Building a list of files which is modified since the last sync in a given folder.
+     * 
      * .grive_state
      * { "last_sync": { "sec": 1429255944, "nsec": 743437000 }, "change_stamp": 10105 }
+     * 
+     * @param candidates a Map <file-name, file>
+     * @param synFolder
      * @param lastSync
      */
-    private static Map<String, java.io.File> readLocal(Map<String, java.io.File> candidates, java.io.File synFolder, long lastSync){
+    private static void readLocal(Map<String, java.io.File> candidates, java.io.File synFolder, long lastSync){
     	for(java.io.File file: synFolder.listFiles()){
     		if (!file.isFile()){
     			readLocal(candidates, file, lastSync);
@@ -78,8 +83,6 @@ public class JGrive {
     			candidates.put(file.getName(), file);
     		}
     	}
-    	
-    	return candidates;
     }
     
     /**
@@ -90,7 +93,7 @@ public class JGrive {
      * @return List of File resources.
      */
     private static List<File> retrieveAllFiles(Drive.Files driveFiles) throws IOException {
-    	logger.debug("Retrieving remote file's meta ...");
+    	LOGGER.debug("Retrieving remote file's meta ...");
     	List<File> result = new ArrayList<File>(1000);
     	Files.List request = driveFiles.list();
     	request.setQ("");
@@ -102,7 +105,7 @@ public class JGrive {
     			result.addAll(files.getItems());
     			request.setPageToken(files.getNextPageToken());
     		} catch (IOException e) {
-    			System.out.println("An error occurred: " + e);
+    			LOGGER.error("An error occurred: " + e);
     			request.setPageToken(null);
     		}
     	} while (request.getPageToken() != null &&
@@ -112,16 +115,12 @@ public class JGrive {
     }
 
     private static void syncFiles(Map<String, java.io.File> candidates) throws Exception {
-    	//TODO do nothing when no local candidates, should it ?
-    	if (candidates.size() == 0){
-    		return;
-    	}
-    	
     	Drive service = new DriveFactory(false).getInstance();
 		Drive.Files driveFiles = service.files();
 		List<File> remoteFiles = retrieveAllFiles(driveFiles);
 		for(File file : remoteFiles) {
-			//System.out.println(String.format("Title: [%s], [%s] [%d]", file.getTitle(), file.getId(), file.getFileSize()));
+			System.out.println(String.format("Title: [%s], Id: [%s], Size: [%d], Parents: [%s]",
+					file.getTitle(), file.getId(), file.getFileSize(), file.getParents().toString() ));
 			String filename = file.getTitle();
 			if (candidates.containsKey(filename)) {
 				//If file was modified.
@@ -144,34 +143,41 @@ public class JGrive {
 			} else {
 				//TODO check if it is directory 
 				//TODO check if it is deleted/trash
-				System.out.println("\tExisting in remote but not local: [" + filename + "]");
+				//FIXME
+//				System.out.println("\tExisting in remote but not local: [" + filename + "]");
 			}
 		}
 		
-		for(String filename: candidates.keySet()){
+		for(Entry<String, java.io.File> entry: candidates.entrySet()){
 			//TODO The whole list or only part of of the remote list ?
-			System.out.println("\tTODO upload to remote: [" + filename + "]");
+			System.out.println("\tUploading to remote: [" + entry.getKey() + "]...");
+			File body = new File();
+			body.setTitle(entry.getKey());
+			FileContent mediaContent = new FileContent("*/*", entry.getValue());
+			File file = service.files().insert(body, mediaContent).execute();
+			System.out.println("File ID: " + file.getId());
 		}
     }
     
     private static String[] localIgnorePatterns;
     
 	public static void main(String[] args) throws Exception{
+		//Load settings.
 		Properties appStates = FileUtils.getAppStates();
 		long lastSync = Long.valueOf(appStates.getProperty(APP_LAST_SYNC, "0"));
-
 		Properties appProperties = FileUtils.getProperties(FileUtils.APP_PROPERTY_FILE);
 		final String syncFoler = appProperties.getProperty("syncFolder");
-		localIgnorePatterns = appProperties.getProperty("localIgnorePattern", "").split("|");
-		logger.info("Reading local directories ...");
+		localIgnorePatterns = appProperties.getProperty("localIgnorePattern", "").split("\\|");
+		
+		LOGGER.info("Reading local directories ...");
 		Map<String, java.io.File> candidates = new HashMap<>();
 		readLocal(candidates, new java.io.File(syncFoler), lastSync);
 		
-		logger.info("Synchronizing folders" + (DRY_RUN? " [dry-run]" : " ..."));
+		LOGGER.info("Synchronizing folders" + (DRY_RUN? " [dry-run]" : " ..."));
 		syncFiles(candidates);
 		
 		appStates.setProperty(APP_LAST_SYNC, Long.toString(System.currentTimeMillis()));
 		FileUtils.saveAppStates();
-		logger.info("Done!");
+		LOGGER.info("Done!");
 	}
 }
