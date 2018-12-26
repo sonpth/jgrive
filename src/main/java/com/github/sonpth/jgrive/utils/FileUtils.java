@@ -1,4 +1,4 @@
-package com.github.sonpth.jgrive.service;
+package com.github.sonpth.jgrive.utils;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -12,7 +12,7 @@ import java.util.Properties;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-public class FileUtils {
+public abstract class FileUtils {
 	public static final String APP_PROPERTY_FILE = "application.properties";
 	public static final String APP_STATES_FILE=".states";
 	public static final String APP_LAST_SYNC = "lastsync";

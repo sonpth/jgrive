@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.Properties;
 
+import com.github.sonpth.jgrive.utils.FileUtils;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.auth.oauth2.GoogleTokenResponse;
@@ -20,6 +21,7 @@ import com.google.api.services.drive.DriveScopes;
 
 public class DriveFactory {
 	private static final String REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob";
+	private static final String APP_NAME = "JGrive";
 	
 	private volatile Drive instance;
 	
@@ -63,7 +65,9 @@ public class DriveFactory {
 		appStates.put("refreshToken", refreshToken);
 		FileUtils.saveAppStates();
      
-		return new Drive.Builder(httpTransport, jsonFactory, credential).build();
+		return new Drive.Builder(httpTransport, jsonFactory, credential)
+				.setApplicationName(APP_NAME)
+				.build();
 	}
 	
 	private Drive getInstanceWithRefreshToken() throws IOException{
@@ -78,7 +82,9 @@ public class DriveFactory {
 		credential.setAccessToken(appStates.getProperty("accessToken", "blablabla"));
 		credential.setRefreshToken(appStates.getProperty("refreshToken", "blablabla"));
 
-		return new Drive.Builder(httpTransport, jsonFactory, credential).build();
+		return new Drive.Builder(httpTransport, jsonFactory, credential)
+				.setApplicationName(APP_NAME)
+				.build();
 	}
 	
 

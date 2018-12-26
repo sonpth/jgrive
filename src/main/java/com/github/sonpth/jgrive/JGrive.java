@@ -1,7 +1,5 @@
 package com.github.sonpth.jgrive;
 
-import static com.github.sonpth.jgrive.service.FileUtils.APP_LAST_SYNC;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,7 +12,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.github.sonpth.jgrive.service.DriveFactory;
-import com.github.sonpth.jgrive.service.FileUtils;
+import com.github.sonpth.jgrive.utils.FileUtils;
 import com.google.api.client.http.FileContent;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.Drive.Files;
@@ -155,7 +153,7 @@ public class JGrive {
 			body.setTitle(entry.getKey());
 			FileContent mediaContent = new FileContent("*/*", entry.getValue());
 			File file = service.files().insert(body, mediaContent).execute();
-			System.out.println("File ID: " + file.getId());
+//			System.out.println("File ID: " + file.getId());
 		}
     }
     
@@ -164,7 +162,7 @@ public class JGrive {
 	public static void main(String[] args) throws Exception{
 		//Load settings.
 		Properties appStates = FileUtils.getAppStates();
-		long lastSync = Long.valueOf(appStates.getProperty(APP_LAST_SYNC, "0"));
+		long lastSync = Long.valueOf(appStates.getProperty(FileUtils.APP_LAST_SYNC, "0"));
 		Properties appProperties = FileUtils.getProperties(FileUtils.APP_PROPERTY_FILE);
 		final String syncFoler = appProperties.getProperty("syncFolder");
 		localIgnorePatterns = appProperties.getProperty("localIgnorePattern", "").split("\\|");
@@ -176,7 +174,7 @@ public class JGrive {
 		LOGGER.info("Synchronizing folders" + (DRY_RUN? " [dry-run]" : " ..."));
 		syncFiles(candidates);
 		
-		appStates.setProperty(APP_LAST_SYNC, Long.toString(System.currentTimeMillis()));
+		appStates.setProperty(FileUtils.APP_LAST_SYNC, Long.toString(System.currentTimeMillis()));
 		FileUtils.saveAppStates();
 		LOGGER.info("Done!");
 	}
