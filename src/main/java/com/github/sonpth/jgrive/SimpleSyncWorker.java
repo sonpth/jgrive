@@ -1,7 +1,6 @@
 package com.github.sonpth.jgrive;
 
-import static com.github.sonpth.jgrive.utils.DriveUtils.updateLocalFile;
-import static com.github.sonpth.jgrive.utils.DriveUtils.updateRemoteFile;
+import static com.github.sonpth.jgrive.utils.DriveUtils.*;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -26,11 +25,8 @@ public class SimpleSyncWorker {
 		List<GoogleDriveTreeNode> remoteNodes = remoteNode.getChildren();
 
 		Iterator<LocalTreeNode> localIterator = localNodes.iterator();
-		while (localIterator.hasNext()) {
+		outerloop: while (localIterator.hasNext()) {
 			LocalTreeNode ltn = localIterator.next();
-			if (ltn.isFolder() && ltn.getLastModified() < lastSync) {
-				continue;
-			}
 
 			if (logger.isTraceEnabled()) {
 				logger.trace("Processing local [" + ltn.getName() + "]");
@@ -42,6 +38,14 @@ public class SimpleSyncWorker {
 
 				if (logger.isTraceEnabled()) {
 					logger.trace("Processing remote [" + gdtn.getName() + "]");
+				}
+				
+				//If both folders have no change, no point to go further.
+				if (ltn.isFolder() && ltn.getLastModified() < lastSync
+						&& gdtn.isFolder() && gdtn.getLastModified() < lastSync) {
+					remoteIterator.remove();
+					localIterator.remove();
+					continue outerloop;
 				}
 
 				try {
@@ -61,17 +65,27 @@ public class SimpleSyncWorker {
 							}
 							
 						} else {
-							logger.warn("Found conflict - different type for resouce named [" + ltn.getName()
+							logger.warn("Found conflict - different type for resouce [" 
+									+ ltn.getFile().getAbsolutePath()
 									+ "]. IGNORED!");
 						}
 						
 						//Remove processed item
-//						localIterator.remove();
-//						remoteIterator.remove();
+						remoteIterator.remove();
+						localIterator.remove();
+						continue outerloop;
 					}
 				} catch (IOException e) {
 					logger.warn(e.getMessage());
 				}
+			}
+		}
+		
+		for(LocalTreeNode ltn: localNodes) {
+			try {
+				uploadFiles(ltn.getFile(), remoteNode.getId(), remoteNode.getDrive());
+			} catch (IOException e) {
+				logger.warn(e.getMessage());
 			}
 		}
 	}

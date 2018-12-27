@@ -5,7 +5,7 @@ import java.util.List;
 public interface TreeNode {
 	/**
 	 * Assumption: filename is unique in the context (e.g: is is not possible for file and sub- folder
-	 * has the same name.
+	 * has the same name. It is worth to know that Google Drive allows this.
 	 * 
 	 * @return filename
 	 */
