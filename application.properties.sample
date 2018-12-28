@@ -1,6 +1,9 @@
 # [Enable the Drive API | https://developers.google.com/drive/web/quickstart/quickstart-java#step_1_enable_the_drive_api]
+#GoogleApp
 clientid=YOUR_CLIENT_ID
 clientsec=YOUR_CLIENT_SECRET
-#
-syncFolder=ROOT_FOLDER_TO_BE_SYNC
-localIgnorePattern=workspace
+
+#This folder will be map to the root of Google Drive
+syncFolder=/home/pson/cloud
+#Accept Java RegEx syntax
+localIgnorePattern=papers|methodology|backup|docu.*

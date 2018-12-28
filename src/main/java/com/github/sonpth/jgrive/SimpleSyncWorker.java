@@ -29,11 +29,11 @@ public class SimpleSyncWorker {
 
 		fileFilters = new ArrayList<>();
 		//For example, we don't want to re-sync a file we manually delete
-		fileFilters.add(f -> f.isFile() && f.lastModified() > this.lastSync);
+		fileFilters.add(f -> f.isDirectory() || f.lastModified() > this.lastSync);
 		//Explicitly declare to ignore.
 		localIgnorePatterns = appProperties.getProperty("localIgnorePattern");
 		if (localIgnorePatterns != null) {
-			fileFilters.add(f -> f.getName().matches(localIgnorePatterns));
+			fileFilters.add(f -> !f.getName().matches(localIgnorePatterns));
 		}
 	}
 
