@@ -25,13 +25,11 @@ public class JGrive2 {
 		
 		LOGGER.info("Loading settings ...");
 		Properties appStates = FileUtils.getAppStates();
-		final long lastSync = Long.valueOf(appStates.getProperty(APP_LAST_SYNC, "0"));
 		Properties appProperties = getProperties(APP_PROPERTY_FILE);
 		final String syncFolder = appProperties.getProperty("syncFolder");
-//		localIgnorePatterns = appProperties.getProperty("localIgnorePattern", "").split("\\|");
 		
 		LOGGER.info("Synchronizing folders ...");
-		SimpleSyncWorker worker = new SimpleSyncWorker(lastSync);
+		SimpleSyncWorker worker = new SimpleSyncWorker(appProperties, appStates);
 		worker.sync(LocalTreeNode.getInstance(syncFolder),
 				GoogleDriveTreeNode.getInstance(new DriveFactory(false).getInstance()));
 		

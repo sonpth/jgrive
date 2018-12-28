@@ -9,7 +9,12 @@ Update <code>application.properties</code> with your *CLIENT ID* and *CLIENT SEC
 * TODO add dependency in the jar file.
 * TODO add `main manifest`.
 
-Main class: `com.github.sonpth.jgrive.JGrive.main(String[])`
+Main class: `com.github.sonpth.jgrive.JGrive2.main(String[])`
+At the momemnt, you can either invoke it via an IDE or
+```
+mvn clean compile && mvn dependency:copy-dependencies
+java -cp target/classes:target/dependency/* com.github.sonpth.jgrive.JGrive2
+```
 
 ## References:
 * [Google Drive Java API | https://developers.google.com/drive/web/quickstart/quickstart-java].

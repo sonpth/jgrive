@@ -1,9 +1,11 @@
 package com.github.sonpth.jgrive.utils;
 
+import java.io.FileFilter;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Collections;
+import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -17,7 +19,23 @@ import static com.github.sonpth.jgrive.model.GoogleDriveTreeNode.FOLDER_MIME_TYP
 public abstract class DriveUtils {
 	private static final Log LOGGER = LogFactory.getLog(DriveUtils.class);
 
-	public static void uploadFiles(java.io.File localFile, String fileId, Drive service) throws IOException {
+	/**
+	 * @param localFile
+	 * @param fileFilters
+	 * @param fileId Google Drive's FileId
+	 * @param service 
+	 * @throws IOException
+	 */
+	public static void uploadFiles(java.io.File localFile, List<FileFilter> fileFilters,
+			String fileId, Drive service) throws IOException {
+		for(FileFilter filter: fileFilters) {
+			if (!filter.accept(localFile)) {
+				LOGGER.debug(String.format("File [%s] failed to pass a FileFilter and will be ignored!",
+						localFile.getAbsoluteFile()));
+				return;
+			}
+		}
+
 		File body = new File();
 		body.setTitle(localFile.getName());
 
@@ -42,7 +60,7 @@ public abstract class DriveUtils {
 			LOGGER.debug(String.format("Created a folder [%s] under [%s]",
 					localFile.getName(), folder.getId()));
 			for (java.io.File file: localFile.listFiles()) {
-				uploadFiles(file, folder.getId(), service);
+				uploadFiles(file, fileFilters, folder.getId(), service);
 			}
 		}
 	}
